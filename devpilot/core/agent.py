@@ -30,7 +30,7 @@ class Agent:
         context: ContextManager,
         memory: MemoryManager,
         tasks: TaskScheduler,
-        max_steps: int = 20,
+        max_steps: int = 200,
     ):
         self.model = model
         self.tools = tools

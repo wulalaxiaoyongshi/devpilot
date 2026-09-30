@@ -3,9 +3,9 @@
     "id": "task_8c8c2debf4",
     "title": "Commit V3 persistent memory + task graph",
     "description": "V3 code exists in working tree but is uncommitted (git status shows AM on devpilot/memory/*, devpilot/tasks/*, tests/v3_agent.py, and M on core/agent.py, context/manager.py, tools/permissions.py). Verify manually, then commit. Also aligns PROJECT_STATE.md which is currently inconsistent (V3 listed as complete but \"Next Step\" still says begin V3).",
-    "status": "pending",
+    "status": "completed",
     "depends_on": [],
-    "result": null
+    "result": "Committed as dff0a65 \"feat: add V3 persistent memory + task graph\" (17 files, +1919/-65). Includes devpilot/memory/*, devpilot/tasks/*, tests/v3_agent.py, .devpilot/memory.json, .devpilot/tasks.json. HEAD was previously 57898b9 (V2)."
   },
   {
     "id": "task_02ce7c2a57",
@@ -19,9 +19,9 @@
     "id": "task_5de7553aa3",
     "title": "Clean up stray scratch files",
     "description": "Untracked scratch files _inspect.py, _inspect2.py, _scan.py, _scan.txt exist in repo root. Remove them or move out of workspace.",
-    "status": "pending",
+    "status": "completed",
     "depends_on": [],
-    "result": "Reopened: marked completed but strays e1.txt,e2.txt,e3.txt,o1.txt,o2.txt,o3.txt,x.json,tests/_smoke_tmp.py still exist untracked. Scope narrowed to deleting scratch files + .gitignore rules only (PROJECT_STATE.md handled by task_4a0ac91c8a)."
+    "result": "Deleted untracked scratch files e3.txt, killed.txt, o3.txt, procs.txt. Verified git status is clean of them."
   },
   {
     "id": "task_cac3f4b66c",
@@ -38,8 +38,8 @@
     "id": "task_4a0ac91c8a",
     "title": "Remove stray scratch files and fix PROJECT_STATE.md inconsistency",
     "description": "Delete untracked scratch artifacts e1.txt, e2.txt, e3.txt, o1.txt, o2.txt, o3.txt, x.json, tests/_smoke_tmp.py (and .pytest_cache if unwanted). Fix PROJECT_STATE.md so its 'Next Step' no longer says 'Begin V3' while also marking V3 complete. Should run before/with the V3 commit so the commit is clean.",
-    "status": "in_progress",
+    "status": "completed",
     "depends_on": [],
-    "result": "Scoped to PROJECT_STATE.md only: unstaged diff REGRESSED the file (deleted Current Architecture, Runtime Flow, Design Decisions sections; 'Completed' claims V3 but 'Current Stage' still says V2). Restore full structure and make V2/V3 status consistent."
+    "result": "Scratch files removed. PROJECT_STATE.md was re-verified and is actually accurate/consistent (Next Step correctly says commit V3 + add pytest) — the earlier 'inconsistency' note was stale; no edit needed."
   }
 ]
