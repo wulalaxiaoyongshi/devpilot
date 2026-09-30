@@ -2,9 +2,9 @@
 
 ## Current Stage
 
-V2 — Context Runtime ✅ Complete
+V3 — Persistent Memory + Task Graph ✅ Complete (source complete; pending commit and automated pytest coverage)
 
-Next: V3 — Persistent Memory + Task Graph
+Next: V4 — Multi-Agent Runtime
 
 ---
 
@@ -62,11 +62,21 @@ Next: V3 — Persistent Memory + Task Graph
 * Preservation of original history when creating transcript snapshots
 * V2 Agent integration
 
+### V3 — Persistent Memory + Task Graph
+
+* Persistent Memory Store
+* Memory Recall
+* Memory Extraction
+* Memory Consolidation
+* Persistent Task Store
+* Dependency-aware Task Graph
+* Runnable-task scheduling
+
 ---
 
 ## Current Architecture
 
-DevPilot currently contains three main runtime layers:
+DevPilot currently contains five main runtime layers:
 
 1. Agent Kernel
 
@@ -90,6 +100,21 @@ DevPilot currently contains three main runtime layers:
    * Trims large or old tool outputs.
    * Semantically compacts old conversation history when required.
 
+4. Memory Runtime
+
+   * Persists durable project memory across process restarts.
+   * Recalls relevant memory into the active context.
+   * Extracts candidate memories from turns.
+   * Consolidates and deduplicates stored memory.
+   * Exposes memory tools to the agent.
+
+5. Task Runtime
+
+   * Persists a task graph across process restarts.
+   * Models tasks with explicit dependencies.
+   * Computes runnable tasks from the dependency graph.
+   * Schedules and updates task status.
+
 ---
 
 ## Current Runtime Flow
@@ -101,6 +126,10 @@ User Request
 → ContextManager
 
 → Todo / Skill / Context preparation
+
+→ Memory Recall
+
+→ Task Graph/State preparation
 
 → Context trimming or compaction when necessary
 
@@ -143,6 +172,8 @@ User Request
 * Transcript history is persisted separately from context compaction.
 * Context compaction is allowed to be lossy for active model context.
 * Transcript snapshots must preserve the original history rather than already-trimmed tool results.
+* Persistent memory and task graph are stored separately from active context and survive restarts.
+* Task dependencies are explicit and enforced by the scheduler; blocked tasks are not runnable.
 * Tests should not require a real LLM unless explicitly testing provider integration.
 
 ---
@@ -153,23 +184,16 @@ Current persistent project data may be stored under:
 
 .devpilot/
 
-including transcript and context-related runtime files.
+including transcript, context, and other runtime files, plus the V3 persistent memory and task graph state:
+
+* `.devpilot/memory.json` — persistent memory store.
+* `.devpilot/tasks.json` — persistent task graph.
 
 Generated runtime state under `.devpilot/` should not be committed unless a file is intentionally used as a fixture or example.
 
 ---
 
 ## Not Started
-
-### V3 — Persistent Memory + Task Graph
-
-* Persistent Memory Store
-* Memory Recall
-* Memory Extraction
-* Memory Consolidation
-* Persistent Task Store
-* Dependency-aware Task Graph
-* Runnable-task scheduling
 
 ### V4 — Multi-Agent Runtime
 
@@ -213,16 +237,16 @@ Generated runtime state under `.devpilot/` should not be committed unless a file
 
 ## Next Step
 
-Begin V3 — Persistent Memory + Task Graph.
+Commit V3 (persistent memory + task graph) and add automated pytest coverage for V1–V3, then begin V4 — Multi-Agent Runtime.
 
 First milestone:
 
-Build a persistent Memory Store that can survive process restarts while remaining separate from the active Context Runtime.
+Build a Multi-Agent Runtime with a Subagent primitive and explicit task ownership, without breaking persistent memory or the task graph.
 
 ---
 
 ## Last Completed Checkpoint
 
-V2 — Context Runtime
+V3 — Persistent Memory + Task Graph
 
-Status: COMPLETE
+Status: COMPLETE (source); pending commit and automated pytest coverage.

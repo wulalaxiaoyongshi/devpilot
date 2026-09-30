@@ -1,0 +1,181 @@
+[
+  {
+    "id": "mem_edcc8e210537",
+    "content": "DevPilot is a long-running, versioned agent project at the workspace root (pyproject name=devpilot, version 0.1.0, requires-python>=3.12, deps openai + python-dotenv). Progress is tracked by version milestones V1..V4 in PROJECT_STATE.md. V1 = agent kernel, V2 = context runtime, V3 = persistent memory + task graph, V4 = multi-agent runtime. Runtimes live under devpilot/core, devpilot/context, devpilot/memory, devpilot/tasks, devpilot/tools. Persistent state is stored in .devpilot/memory.json and .devpilot/tasks.json.",
+    "category": "project_fact",
+    "tags": [
+      "architecture",
+      "devpilot",
+      "roadmap"
+    ],
+    "source": "agent",
+    "created_at": "2026-09-30T10:01:44.520144+00:00",
+    "updated_at": "2026-09-30T10:01:44.520144+00:00"
+  },
+  {
+    "id": "mem_d379021e929f",
+    "content": "DevPilot workspace shell is Windows cmd.exe. POSIX commands (pwd, ls, head, tail, dir /s) FAIL or error. Use python -c for file/JSON inspection, `git` (works), and the read_file/glob tools. Also .pytest_cache creation raises WinError 183; pytest cache is unreliable.",
+    "category": "constraint",
+    "tags": [
+      "devpilot",
+      "environment",
+      "tooling",
+      "windows"
+    ],
+    "source": "agent",
+    "created_at": "2026-09-30T10:01:44.521761+00:00",
+    "updated_at": "2026-09-30T10:01:44.521761+00:00"
+  },
+  {
+    "id": "mem_224b6705f37f",
+    "content": "DevPilot V1-V3 test files (tests/v1_agent.py, v2_agent.py, v3_agent.py) are MANUAL runner scripts, not pytest tests, so `python -m pytest tests/` collects 0 tests and exits with code 5. Do not treat exit 5 as a failure of the code; run the scripts directly to validate. Automated pytest coverage is a known gap (see persistent task graph).",
+    "category": "lesson",
+    "tags": [
+      "devpilot",
+      "lesson",
+      "testing"
+    ],
+    "source": "agent",
+    "created_at": "2026-09-30T10:01:44.523723+00:00",
+    "updated_at": "2026-09-30T10:01:44.523723+00:00"
+  },
+  {
+    "id": "mem_b15deea3053e",
+    "content": "V3 (persistent memory + task graph) source code is fully written and imports cleanly (devpilot/memory/*.py, devpilot/tasks/*.py, tests/v3_agent.py, .devpilot/memory.json, .devpilot/tasks.json) but was NEVER COMMITTED — git status shows these files as staged 'AM' and PROJECT_STATE.md as modified-uncommitted as of the current HEAD (57898b9 feat: add V2 context runtime). The V3 runner tests/v3_agent.py requires a real LLM (DeepSeekModel via openai), so V3 cannot be validated in this environment without API access. PROJECT_STATE.md is internally inconsistent (marks V3 complete yet its 'Next Step' still says 'Begin V3') and needs correcting.",
+    "category": "project_fact",
+    "tags": [
+      "devpilot",
+      "git",
+      "status",
+      "v3"
+    ],
+    "source": "agent",
+    "created_at": "2026-09-30T10:03:14.897413+00:00",
+    "updated_at": "2026-09-30T10:03:14.897413+00:00"
+  },
+  {
+    "id": "mem_0feec0977020",
+    "content": "The DevPilot workspace shell is Windows cmd (not bash). Some command forms break the tool harness with \"TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'\": notably `dir /s /b` and chaining `&&` with certain commands/variable expansion like %CD%. Reliable approach: run one simple command at a time (e.g. `dir /b`, `git log --oneline -20`), use the glob tool for recursive file listing instead of `dir /s /b`, and use the venv interpreter at .venv\\Scripts\\python.exe (Python 3.14.6). Also, console stdout is GBK — non-ASCII/garbled chars in file content can raise UnicodeEncodeError when printed; read files with the read_file tool instead of printing them.",
+    "category": "lesson",
+    "tags": [
+      "devpilot",
+      "shell",
+      "tooling",
+      "windows"
+    ],
+    "source": "agent",
+    "created_at": "2026-09-30T10:03:14.901177+00:00",
+    "updated_at": "2026-09-30T10:03:14.901177+00:00"
+  },
+  {
+    "id": "mem_39aa715396b1",
+    "content": "DevPilot is a version-milestone (V1-V4) long-term agent project using a persistent task graph for tracking.",
+    "category": "project_fact",
+    "tags": [
+      "architecture",
+      "devpilot",
+      "task-graph"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:21.985812+00:00",
+    "updated_at": "2026-09-30T10:03:21.985812+00:00"
+  },
+  {
+    "id": "mem_07ac6ede120c",
+    "content": "DevPilot V3 code (devpilot/memory/*.py, devpilot/tasks/*.py, tests/v3_agent.py) has been fully written but never committed; .devpilot/memory.json and .devpilot/tasks.json exist.",
+    "category": "project_fact",
+    "tags": [
+      "devpilot",
+      "git",
+      "uncommitted",
+      "v3"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:21.988959+00:00",
+    "updated_at": "2026-09-30T10:03:21.988959+00:00"
+  },
+  {
+    "id": "mem_fc8880b184e3",
+    "content": "DevPilot V3 cannot be verified end-to-end in this environment because tests/v3_agent.py requires a real LLM (DeepSeekModel via openai) and no API is available.",
+    "category": "constraint",
+    "tags": [
+      "devpilot",
+      "llm",
+      "testing",
+      "v3"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:21.993881+00:00",
+    "updated_at": "2026-09-30T10:03:21.993881+00:00"
+  },
+  {
+    "id": "mem_15d1abd38818",
+    "content": "DevPilot toolchain: Windows cmd shell; Python interpreter at .venv\\Scripts\\python.exe = Python 3.14.6.",
+    "category": "project_fact",
+    "tags": [
+      "devpilot",
+      "python",
+      "toolchain",
+      "windows"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:21.998263+00:00",
+    "updated_at": "2026-09-30T10:03:21.998263+00:00"
+  },
+  {
+    "id": "mem_3a8bbbbf2760",
+    "content": "This workspace runs on Windows cmd: commands like `dir /s /b` and `&&` chaining trigger harness errors. Execute simple commands one at a time, use glob for recursive listing, and use read_file to read files. stdout is GBK — printing non-ASCII directly causes UnicodeEncodeError.",
+    "category": "lesson",
+    "tags": [
+      "cmd",
+      "encoding",
+      "harness",
+      "shell",
+      "windows"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:22.005147+00:00",
+    "updated_at": "2026-09-30T10:03:22.005147+00:00"
+  },
+  {
+    "id": "mem_d09b18dc6897",
+    "content": "Running `python -m pytest tests/` collects 0 tests with exit code 5 (test coverage gap, not a code failure). V1-V3 lack automated pytest coverage.",
+    "category": "project_fact",
+    "tags": [
+      "coverage-gap",
+      "devpilot",
+      "pytest",
+      "testing"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:22.009609+00:00",
+    "updated_at": "2026-09-30T10:03:22.009609+00:00"
+  },
+  {
+    "id": "mem_a8185235632e",
+    "content": "PROJECT_STATE.md is inconsistent: marks V3 as complete but its 'Next Step' still says 'Begin V3', and the file has uncommitted modifications.",
+    "category": "project_fact",
+    "tags": [
+      "devpilot",
+      "documentation",
+      "inconsistency"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:22.014574+00:00",
+    "updated_at": "2026-09-30T10:03:22.014574+00:00"
+  },
+  {
+    "id": "mem_210fcd72cb45",
+    "content": "DevPilot task dependencies: V4 multi-agent runtime (task_cac3f4b66c) is blocked on committing V3 (task_8c8c2debf4) and adding pytest coverage (task_02ce7c2a57). Committing V3 and test coverage are prerequisites for V4.",
+    "category": "decision",
+    "tags": [
+      "dependencies",
+      "devpilot",
+      "task-graph",
+      "v4"
+    ],
+    "source": "auto_extract",
+    "created_at": "2026-09-30T10:03:22.023929+00:00",
+    "updated_at": "2026-09-30T10:03:22.023929+00:00"
+  }
+]

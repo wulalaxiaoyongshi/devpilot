@@ -77,25 +77,42 @@ class ContextManager:
             messages
         )
 
+
     def build_system_prompt(
-        self,
+            self,
+            extra_sections: list[str] | None = None,
     ) -> str:
+        sections = [
+            self.base_system,
 
-        return (
-            f"{self.base_system}\n\n"
+            (
+                "## Current Todo State\n"
+                f"{self.todos.render()}"
+            ),
 
-            "## Current Todo State\n"
-            f"{self.todos.render()}\n\n"
+            (
+                "## Available Skills\n"
+                f"{self.skills.catalog_text()}"
+            ),
 
-            "## Available Skills\n"
-            f"{self.skills.catalog_text()}\n\n"
+            (
+                "For complex multi-step work, "
+                "use todo_write to keep the "
+                "current execution plan accurate.\n"
+                "Use load_skill when a listed "
+                "skill is relevant."
+            ),
+        ]
 
-            "For complex multi-step work, "
-            "use todo_write to keep the "
-            "plan current.\n"
+        if extra_sections:
+            sections.extend(
+                section
+                for section in extra_sections
+                if section
+            )
 
-            "Load a skill with load_skill "
-            "only when it is relevant."
+        return "\n\n".join(
+            sections
         )
 
     def record(

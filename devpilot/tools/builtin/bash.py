@@ -25,6 +25,8 @@ def create_bash_tool(workdir: Path,) -> Tool:
             cwd=root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=120,
             check=False,
         )

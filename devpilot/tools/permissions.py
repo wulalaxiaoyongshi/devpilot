@@ -34,7 +34,17 @@ class PermissionPolicy:
         # ----------
         # READ ONLY
         # ----------
-        if name in{"read_file","glob","todo_write","load_skill"}:
+        if name in{
+            "read_file",
+            "glob",
+            "todo_write",
+            "load_skill",
+            "memory_write",
+            "memory_search",
+            "task_create",
+            "task_update",
+            "task_list",
+        }:
             return None
         
         # ----------

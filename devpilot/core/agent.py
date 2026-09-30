@@ -3,6 +3,12 @@ from devpilot.context.manager import (
 )
 from devpilot.core.message import Message
 from devpilot.core.model import Model
+from devpilot.memory.manager import (
+    MemoryManager,
+)
+from devpilot.tasks.scheduler import (
+    TaskScheduler,
+)
 from devpilot.tools.dispatcher import (
     ToolDispatcher,
 )
@@ -22,12 +28,16 @@ class Agent:
         tools: ToolRegistry,
         hooks: HookManager,
         context: ContextManager,
-        max_steps: int = 200,
+        memory: MemoryManager,
+        tasks: TaskScheduler,
+        max_steps: int = 20,
     ):
         self.model = model
         self.tools = tools
         self.hooks = hooks
         self.context = context
+        self.memory = memory
+        self.tasks = tasks
 
         self.max_steps = max_steps
 
@@ -42,37 +52,74 @@ class Agent:
             Message
         ] = []
 
-    def run(self,user_input: str,) -> str:
-
+    def run(self,user_input: str) -> str:
         self.messages.append(
             Message(
                 role="user",
                 content=user_input,
             )
         )
+        for _ in range(
+            self.max_steps
+        ):
 
-        for _ in range(self.max_steps):
-
-            # --------------------
-            # Context Runtime
-            # --------------------
-
+            # =========================
+            # Active Context
+            # =========================
             prepared = (
                 self.context.prepare(
                     self.messages
                 )
             )
 
-            self.messages[:] = prepared
+            self.messages[:] = (
+                prepared
+            )
+
+            # =========================
+            # Persistent Memory
+            # =========================
+
+            memory_context = (
+                self.memory.recall(
+                    user_input
+                )
+            )
+
+            # =========================
+            # Persistent Task Graph
+            # =========================
+
+            task_context = (
+                self.tasks.render()
+            )
+
+            # =========================
+            # Build System Prompt
+            # =========================
 
             system = (
                 self.context
-                .build_system_prompt()
+                .build_system_prompt(
+                    extra_sections=[
+                        (
+                            "## Relevant "
+                            "Persistent Memory\n"
+                            f"{memory_context}"
+                        ),
+
+                        (
+                            "## Persistent "
+                            "Task Graph\n"
+                            f"{task_context}"
+                        ),
+                    ]
+                )
             )
 
-            # --------------------
+            # =========================
             # Model
-            # --------------------
+            # =========================
 
             response = (
                 self.model.complete(
@@ -86,37 +133,40 @@ class Agent:
                 )
             )
 
-            # --------------------
-            # Save Assistant
-            # --------------------
+            # =========================
+            # Assistant Message
+            # =========================
 
             self.messages.append(
                 Message(
                     role="assistant",
-                    content=(
-                        response.content
-                    ),
+                    content=response.content,
                     tool_calls=(
                         response.tool_calls
                     ),
                 )
             )
 
-            # --------------------
+            # =========================
             # Stop
-            # --------------------
+            # =========================
 
             if not response.tool_calls:
 
-                self.context.record(
-                    self.messages
+                self.memory.capture_turn(
+                    user_input=(
+                        user_input
+                    ),
+                    assistant_output=(
+                        response.content
+                    ),
                 )
 
                 return response.content
 
-            # --------------------
-            # Tools
-            # --------------------
+            # =========================
+            # Tool Calls
+            # =========================
 
             for tool_call in (
                 response.tool_calls
@@ -138,10 +188,6 @@ class Agent:
                         ),
                     )
                 )
-
-        self.context.record(
-            self.messages
-        )
 
         raise RuntimeError(
             "Agent exceeded "
