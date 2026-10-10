@@ -66,9 +66,7 @@ hooks = HookManager()
 
 permission = PermissionPolicy()
 
-hooks.register_pre_tool_use(
-    permission.check
-)
+hooks.register_pre_tool_use(permission.check)
 
 
 # =========================

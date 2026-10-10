@@ -1,11 +1,4 @@
 # DevPilot Project State
-
-## Current Stage
-
-V3 — Persistent Memory + Task Graph ✅ Complete (source complete; pending commit and automated pytest coverage)
-
-Next: V4 — Multi-Agent Runtime
-
 ---
 
 ## Completed
@@ -72,129 +65,6 @@ Next: V4 — Multi-Agent Runtime
 * Dependency-aware Task Graph
 * Runnable-task scheduling
 
----
-
-## Current Architecture
-
-DevPilot currently contains five main runtime layers:
-
-1. Agent Kernel
-
-   * Controls the model/tool execution loop.
-   * Maintains conversation state.
-   * Stops when the model returns no tool calls or the step limit is reached.
-
-2. Tool Runtime
-
-   * Exposes tools to the model.
-   * Maps tool names to Python handlers.
-   * Runs permission checks and hooks.
-   * Executes workspace operations.
-
-3. Context Runtime
-
-   * Maintains Todo state.
-   * Exposes Skills on demand.
-   * Persists transcripts.
-   * Controls active LLM context size.
-   * Trims large or old tool outputs.
-   * Semantically compacts old conversation history when required.
-
-4. Memory Runtime
-
-   * Persists durable project memory across process restarts.
-   * Recalls relevant memory into the active context.
-   * Extracts candidate memories from turns.
-   * Consolidates and deduplicates stored memory.
-   * Exposes memory tools to the agent.
-
-5. Task Runtime
-
-   * Persists a task graph across process restarts.
-   * Models tasks with explicit dependencies.
-   * Computes runnable tasks from the dependency graph.
-   * Schedules and updates task status.
-
----
-
-## Current Runtime Flow
-
-User Request
-
-→ Agent Loop
-
-→ ContextManager
-
-→ Todo / Skill / Context preparation
-
-→ Memory Recall
-
-→ Task Graph/State preparation
-
-→ Context trimming or compaction when necessary
-
-→ Dynamic System Prompt
-
-→ Model
-
-→ ToolCall
-
-→ Tool Registry
-
-→ PreToolUse Hooks
-
-→ Permission Policy
-
-→ Tool Handler
-
-→ PostToolUse Hooks
-
-→ Tool Result
-
-→ Agent Loop continues
-
-→ Final Assistant Response
-
----
-
-## Current Design Decisions
-
-* Python is the main implementation language.
-* Core Agent mechanisms are implemented without LangChain, CrewAI, or AutoGen.
-* Model providers are hidden behind the Model interface.
-* Mock/Fake models are used for deterministic unit tests.
-* LLMs make semantic decisions.
-* Deterministic control remains inside the Runtime.
-* Tools are injected into Agents rather than hard-coded into the Agent class.
-* Tool execution is separated from tool selection.
-* Runtime permissions are independent of model decisions.
-* Skills are loaded on demand rather than permanently inserted into context.
-* Transcript history is persisted separately from context compaction.
-* Context compaction is allowed to be lossy for active model context.
-* Transcript snapshots must preserve the original history rather than already-trimmed tool results.
-* Persistent memory and task graph are stored separately from active context and survive restarts.
-* Task dependencies are explicit and enforced by the scheduler; blocked tasks are not runnable.
-* Tests should not require a real LLM unless explicitly testing provider integration.
-
----
-
-## Persistent Runtime State
-
-Current persistent project data may be stored under:
-
-.devpilot/
-
-including transcript, context, and other runtime files, plus the V3 persistent memory and task graph state:
-
-* `.devpilot/memory.json` — persistent memory store.
-* `.devpilot/tasks.json` — persistent task graph.
-
-Generated runtime state under `.devpilot/` should not be committed unless a file is intentionally used as a fixture or example.
-
----
-
-## Not Started
-
 ### V4 — Multi-Agent Runtime
 
 * Subagent
@@ -202,6 +72,13 @@ Generated runtime state under `.devpilot/` should not be committed unless a file
 * Task ownership
 * Mailbox
 * Git worktree isolation
+
+---
+
+
+## Not Started
+
+
 
 ### V5 — Event Runtime
 
@@ -234,19 +111,3 @@ Generated runtime state under `.devpilot/` should not be committed unless a file
 * Full coding-agent demo
 
 ---
-
-## Next Step
-
-Commit V3 (persistent memory + task graph) and add automated pytest coverage for V1–V3, then begin V4 — Multi-Agent Runtime.
-
-First milestone:
-
-Build a Multi-Agent Runtime with a Subagent primitive and explicit task ownership, without breaking persistent memory or the task graph.
-
----
-
-## Last Completed Checkpoint
-
-V3 — Persistent Memory + Task Graph
-
-Status: COMPLETE (source); pending commit and automated pytest coverage.

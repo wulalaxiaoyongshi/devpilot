@@ -16,9 +16,11 @@ class Task:
     title: str
     description: str = ""
     status: TaskStatus = "pending"
-
     depends_on: list[str] = field(
         default_factory=list
     )
-
     result: str | None = None
+    # V4
+    owner: str | None = None
+    attempts: int = 0
+    claimed_at: str | None = None

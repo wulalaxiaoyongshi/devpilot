@@ -1,6 +1,8 @@
+from collections.abc import Callable
 from dataclasses import asdict
 import json
 from pathlib import Path
+from threading import RLock
 from uuid import uuid4
 
 from devpilot.tasks.model import Task
@@ -8,27 +10,28 @@ from devpilot.tasks.model import Task
 
 class TaskStore:
 
-    def __init__(self,path: Path,):
+    def __init__(self,path: Path):
         self.path = path.resolve()
         self.path.parent.mkdir(
             parents=True,
             exist_ok=True,
         )
+        self._lock = RLock()
         if not self.path.exists():
-            self._save([])
+            self._save_unlocked([])
 
     def all(self) -> list[Task]:
-        data = json.loads(self.path.read_text(encoding="utf-8"))
-        return [
-            Task(**item)
-            for item in data
-        ]
+        with self._lock:
+            return self._load_unlocked()
 
-    def get(self,task_id: str) -> Task | None:
-
-        for task in self.all():
-            if task.id == task_id:
-                return task
+    def get(
+        self,
+        task_id: str,
+    ) -> Task | None:
+        with self._lock:
+            for task in self._load_unlocked():
+                if task.id == task_id:
+                    return task
         return None
 
     def create(
@@ -38,66 +41,138 @@ class TaskStore:
         depends_on: list[str] | None = None,
     ) -> Task:
 
-        task = Task(
-            id=(
-                "task_"
-                + uuid4().hex[:10]
-            ),
-            title=title,
-            description=description,
-            depends_on=(
-                depends_on or []
-            ),
-        )
+        with self._lock:
 
-        tasks = self.all()
+            task = Task(
+                id=(
+                    "task_"
+                    + uuid4().hex[:10]
+                ),
+                title=title,
+                description=description,
+                depends_on=(
+                    depends_on or []
+                ),
+            )
 
-        tasks.append(task)
+            tasks = self._load_unlocked()
 
-        self._save_tasks(tasks)
+            tasks.append(task)
 
-        return task
+            self._save_tasks_unlocked(
+                tasks
+            )
+
+            return task
 
     def update(
         self,
         task: Task,
     ) -> None:
 
-        tasks = self.all()
+        with self._lock:
 
-        updated = []
+            tasks = self._load_unlocked()
 
-        found = False
+            found = False
 
-        for current in tasks:
+            for index, current in enumerate(
+                tasks
+            ):
 
-            if current.id == task.id:
-                updated.append(task)
-                found = True
-            else:
-                updated.append(current)
+                if current.id == task.id:
 
-        if not found:
-            raise ValueError(
-                f"Unknown task: "
-                f"{task.id}"
+                    tasks[index] = task
+
+                    found = True
+
+                    break
+
+            if not found:
+                raise ValueError(
+                    f"Unknown task: "
+                    f"{task.id}"
+                )
+
+            self._save_tasks_unlocked(
+                tasks
             )
 
-        self._save_tasks(updated)
+    def mutate(
+        self,
+        task_id: str,
+        mutator: Callable[
+            [Task],
+            None,
+        ],
+    ) -> Task:
 
-    def _save_tasks(
+        with self._lock:
+
+            tasks = self._load_unlocked()
+
+            target: Task | None = None
+
+            for task in tasks:
+
+                if task.id == task_id:
+                    target = task
+                    break
+
+            if target is None:
+                raise ValueError(
+                    f"Unknown task: "
+                    f"{task_id}"
+                )
+
+            mutator(target)
+
+            self._save_tasks_unlocked(
+                tasks
+            )
+
+            return target
+
+    def _load_unlocked(
+        self,
+    ) -> list[Task]:
+
+        try:
+
+            data = json.loads(
+                self.path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        except (
+            json.JSONDecodeError,
+            OSError,
+        ) as error:
+
+            raise RuntimeError(
+                f"Failed to load tasks: "
+                f"{error}"
+            ) from error
+
+        return [
+            Task(**item)
+            for item in data
+        ]
+
+    def _save_tasks_unlocked(
         self,
         tasks: list[Task],
     ) -> None:
 
-        self._save(
+        self._save_unlocked(
             [
                 asdict(task)
                 for task in tasks
             ]
         )
 
-    def _save(
+    def _save_unlocked(
         self,
         data: list[dict],
     ) -> None:
@@ -115,4 +190,6 @@ class TaskStore:
             encoding="utf-8",
         )
 
-        temp.replace(self.path)
+        temp.replace(
+            self.path
+        )

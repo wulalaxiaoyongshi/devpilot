@@ -44,6 +44,11 @@ class PermissionPolicy:
             "task_create",
             "task_update",
             "task_list",
+            "mail_send",
+            "mail_read",
+            "team_spawn",
+            "team_send",
+            "team_status"
         }:
             return None
         
