@@ -73,20 +73,16 @@
 * Mailbox
 * Git worktree isolation
 
----
-
-
-## Not Started
-
-
-
 ### V5 — Event Runtime
 
 * Background tasks
 * Event bus
 * Cron
 * Async event handling
+---
 
+
+## Not Started
 ### V6 — MCP
 
 * MCP client
