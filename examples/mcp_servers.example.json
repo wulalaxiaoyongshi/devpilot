@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "alias": "issues",
+      "command": "python",
+      "args": ["-u", "REPLACE_WITH_TRUSTED_SERVER_SCRIPT.py"],
+      "env_from": ["GITHUB_TOKEN"],
+      "allow_tools": ["list_issues", "get_issue"],
+      "timeout_seconds": 30,
+      "max_tools": 20
+    },
+    {
+      "alias": "docs",
+      "command": "python",
+      "args": ["-u", "REPLACE_WITH_TRUSTED_DOCS_SERVER_SCRIPT.py"],
+      "env_from": [],
+      "allow_tools": ["search_docs"],
+      "timeout_seconds": 20,
+      "max_tools": 20
+    }
+  ]
+}
