@@ -5,8 +5,25 @@ requires-python = ">=3.12"
 dependencies = [
     "openai",
     "python-dotenv",
+    "jsonschema>=4.20",
+    "tzdata>=2024.1; platform_system == 'Windows'",
 ]
+
+[project.optional-dependencies]
+mcp = ["mcp>=2,<3"]
+test = ["pytest>=8"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+[project.scripts]
+devpilot = "devpilot.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["devpilot", "devpilot.*"]
+exclude = ["skills", "skills.*", "tests", "tests.*", "examples", "examples.*"]

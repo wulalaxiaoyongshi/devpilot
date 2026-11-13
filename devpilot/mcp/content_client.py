@@ -1,6 +1,11 @@
 """V6.5：让 V6.1 的 stdio Client 和新 HTTP Client 读取 MCP Resources 与 Prompts。"""
 
-from dataclasses import dataclass
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+import os
+import re
+from types import MappingProxyType
+from typing import Mapping
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
@@ -12,6 +17,9 @@ from devpilot.mcp.config import LocalServerConfig
 class RemoteServerConfig:
     """保存宿主明确批准的 HTTP MCP 地址，并阻止远程明文通信。"""
     url: str
+    auth_token_env: str | None = None
+    headers: Mapping[str, str] = field(default_factory=dict, repr=False)
+
     def __post_init__(self) -> None:
         """校验远程 Server 地址必须是 HTTPS 或本机回环 HTTP。"""
         parsed = urlsplit(self.url)
@@ -33,6 +41,20 @@ class RemoteServerConfig:
             raise ValueError("MCP endpoint must use the explicit /mcp path")
         if parsed.query:
             raise ValueError("MCP endpoint must not contain query parameters or secrets")
+        if self.auth_token_env is not None and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", self.auth_token_env):
+            raise ValueError("auth_token_env must name one environment variable")
+        if not isinstance(self.headers, Mapping):
+            raise ValueError("MCP HTTP headers must be a mapping")
+        validated: dict[str, str] = {}
+        for key, value in self.headers.items():
+            if not isinstance(key, str) or not re.fullmatch(r"X-MCP-[A-Za-z0-9-]+", key, flags=re.IGNORECASE):
+                raise ValueError("Only non-secret X-MCP-* headers are supported in configuration")
+            if not isinstance(value, str) or any(ord(char) < 32 or ord(char) == 127 for char in value):
+                raise ValueError("MCP header values must be printable strings")
+            if key.lower() in {existing.lower() for existing in validated}:
+                raise ValueError("Duplicate MCP HTTP header")
+            validated[key] = value
+        object.__setattr__(self, "headers", MappingProxyType(validated))
 
 
 class ContentMCPClient(LocalMCPClient):
@@ -72,6 +94,28 @@ class HTTPMCPClient(ContentMCPClient):
         super().__init__(LocalServerConfig(command="__http_not_a_subprocess__"))
 
     def _new_sdk_client(self):
-        """让 MCP v2 SDK 根据 URL 自动选择 Streamable HTTP 传输。"""
+        """连接 HTTP MCP 时从环境变量注入 Bearer Token，并管理 SDK 与 HTTP 客户端的生命周期。"""
         from mcp import Client
-        return Client(self.remote.url)
+        if self.remote.auth_token_env is None and not self.remote.headers:
+            return Client(self.remote.url)
+        import httpx2
+        from mcp.client.streamable_http import streamable_http_client
+
+        @asynccontextmanager
+        async def authenticated_client():
+            """确保 Streamable HTTP 使用的认证客户端会随 MCP 会话一起关闭。"""
+            headers = dict(self.remote.headers)
+            if self.remote.auth_token_env:
+                token = os.environ.get(self.remote.auth_token_env, "").strip()
+                if not token:
+                    raise RuntimeError(f"Missing MCP HTTP credential environment variable: {self.remote.auth_token_env}")
+                headers["Authorization"] = f"Bearer {token}"
+            async with httpx2.AsyncClient(
+                headers=headers,
+                timeout=httpx2.Timeout(30.0, read=300.0),
+            ) as http_client:
+                transport = streamable_http_client(self.remote.url, http_client=http_client)
+                async with Client(transport) as client:
+                    yield client
+
+        return authenticated_client()

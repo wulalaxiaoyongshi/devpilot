@@ -59,10 +59,12 @@ class EvidenceCollector:
     def _git_state(self) -> tuple[str | None, bool | None]:
         """读取当前 Git HEAD 和工作区脏状态，若不是 Git 仓库则返回未知。"""
         try:
-            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.workspace, capture_output=True, text=True, timeout=5, check=False)
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.workspace, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=5, check=False)
             if head.returncode != 0:
                 return None, None
-            status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=self.workspace, capture_output=True, text=True, timeout=5, check=False)
+            status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=self.workspace, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=5, check=False)
             return head.stdout.strip(), (bool(status.stdout.strip()) if status.returncode == 0 else None)
         except (OSError, subprocess.TimeoutExpired):
             return None, None

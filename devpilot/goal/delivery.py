@@ -132,7 +132,8 @@ class GoalDeliveryBuilder:
                     if ancestor.returncode != 0:
                         continue
                     changed = subprocess.run(["git", "show", "--format=", "--name-only", commit], cwd=self.app.verifier.workspace,
-                                             capture_output=True, text=True, timeout=5, check=False)
+                                             capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=5, check=False)
                     if changed.returncode == 0:
                         files.update(item.strip() for item in changed.stdout.splitlines() if item.strip())
                 except (OSError, subprocess.TimeoutExpired):

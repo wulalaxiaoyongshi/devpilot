@@ -94,3 +94,43 @@ class BackgroundJobManager:  # 负责后台执行、状态更新与取消
             return job.result or ""  # 空字符串也是合法成功结果
         if job.status == "cancelled":  # 任务已经取消
             raise JobCancelled(job.error or f"Job {job_id} cancelled")  # 明确区分取消与失败
+
+        if job.status in {"failed", "interrupted"}:
+            raise RuntimeError(job.error or f"Job {job_id} {job.status}")
+        raise RuntimeError(f"Job {job_id} is not finished: {job.status}")
+
+    def _notify(self, job: BackgroundJob) -> None:
+        """任务终态持久化后通知事件订阅者，回调异常不改变已完成的 Job。"""
+        callback = self.on_finished
+        if callback is None:
+            return
+        try:
+            callback(job)
+        except Exception:
+            logger.exception("Background job completion callback failed for %s", job.id)
+
+    def cancel(self, job_id: str) -> bool:
+        """排队任务直接取消并发通知，运行中的任务只发送协作取消信号。"""
+        notify = None
+        with self._lock:
+            job = self.get_status(job_id)
+            if job.status in TERMINAL:
+                return False
+            event = self._cancel_events.get(job_id)
+            if event is None:
+                return False
+            event.set()
+            future = self._futures.get(job_id)
+            if future is not None and future.cancel():
+                notify = self.store.update(job_id, status="cancelled", error="Job cancelled before start", finished_at=utc_now())
+            elif job.status != "cancelling":
+                self.store.update(job_id, status="cancelling")
+        if notify is not None:
+            self._notify(notify)
+        return True
+
+    def shutdown(self, wait_for_jobs: bool = True) -> None:
+        """停止接收新任务，并按需等待已有后台任务和完成通知结束。"""
+        with self._lock:
+            self._closed = True
+        self.executor.shutdown(wait=wait_for_jobs)

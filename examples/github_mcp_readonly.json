@@ -1,0 +1,19 @@
+{
+  "servers": [
+    {
+      "alias": "github",
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "-e", "GITHUB_READ_ONLY=1",
+        "-e", "GITHUB_TOOLSETS=repos,issues",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env_from": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "allow_tools": null,
+      "timeout_seconds": 60,
+      "max_tools": 100
+    }
+  ]
+}

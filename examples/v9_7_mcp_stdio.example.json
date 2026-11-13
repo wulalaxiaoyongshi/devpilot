@@ -1,0 +1,12 @@
+{
+  "servers": [
+    {
+      "alias": "fixture",
+      "command": "python",
+      "args": ["-m", "devpilot.mcp.servers.issue_fixture_server"],
+      "allow_tools": ["get_issue"],
+      "timeout_seconds": 30.0,
+      "max_tools": 10
+    }
+  ]
+}

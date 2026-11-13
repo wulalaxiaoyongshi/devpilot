@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "alias": "github",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "auth_token_env": "GITHUB_PERSONAL_ACCESS_TOKEN",
+      "headers": {
+        "X-MCP-Toolsets": "repos,issues",
+        "X-MCP-Readonly": "true"
+      },
+      "allow_tools": null,
+      "timeout_seconds": 60,
+      "max_tools": 100
+    }
+  ]
+}

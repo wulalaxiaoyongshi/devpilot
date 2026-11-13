@@ -4,3 +4,9 @@ Version: 0.1.0
 Requires-Python: >=3.12
 Requires-Dist: openai
 Requires-Dist: python-dotenv
+Requires-Dist: jsonschema>=4.20
+Requires-Dist: tzdata>=2024.1; platform_system == "Windows"
+Provides-Extra: mcp
+Requires-Dist: mcp<3,>=2; extra == "mcp"
+Provides-Extra: test
+Requires-Dist: pytest>=8; extra == "test"

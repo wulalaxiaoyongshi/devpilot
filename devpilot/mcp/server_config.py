@@ -53,7 +53,7 @@ def load_server_definitions(path: Path, environment: Mapping[str, str] | None = 
     host_env = os.environ if environment is None else environment
     definitions: list[MCPServerDefinition] = []
     aliases: set[str] = set()
-    permitted_fields = {"alias", "command", "args", "env_from", "allow_tools", "timeout_seconds", "max_tools", "url"}
+    permitted_fields = {"alias", "command", "args", "env_from", "allow_tools", "timeout_seconds", "max_tools", "url", "auth_token_env", "headers"}
     for row in rows:
         if not isinstance(row, dict) or set(row) - permitted_fields:
             raise ValueError("Unknown MCP Server configuration field")
@@ -63,12 +63,20 @@ def load_server_definitions(path: Path, environment: Mapping[str, str] | None = 
         env_names = row.get("env_from", [])
         allow = row.get("allow_tools")
         remote_url = row.get("url")
+        auth_token_env = row.get("auth_token_env")
+        headers = row.get("headers", {})
         if not isinstance(alias, str) or ((command is None) == (remote_url is None)):
             raise ValueError("Every MCP Server needs an alias and exactly one command or url")
         if command is not None and not isinstance(command, str):
             raise ValueError("Server command must be a string")
         if remote_url is not None and (not isinstance(remote_url, str) or "args" in row or "env_from" in row):
             raise ValueError("Remote Server requires a URL and cannot use subprocess args or env_from")
+        if remote_url is None and ("auth_token_env" in row or "headers" in row):
+            raise ValueError("HTTP authorization fields require an HTTP MCP URL")
+        if auth_token_env is not None and (not isinstance(auth_token_env, str) or not _ENV_NAME.fullmatch(auth_token_env)):
+            raise ValueError("Invalid HTTP token environment variable name")
+        if not isinstance(headers, dict):
+            raise ValueError("HTTP MCP headers must be an object")
         if alias in aliases:
             raise ValueError(f"Duplicate MCP Server alias: {alias}")
         if not isinstance(args, list) or any(not isinstance(arg, str) for arg in args):
@@ -86,7 +94,7 @@ def load_server_definitions(path: Path, environment: Mapping[str, str] | None = 
         child_env = {key: host_env[key] for key in _BASE_ENV if key in host_env}
         child_env.update({key: host_env[key] for key in names})
         local = LocalServerConfig(command=command, args=tuple(args), env=child_env) if command is not None else None
-        remote = RemoteServerConfig(remote_url) if remote_url is not None else None
+        remote = RemoteServerConfig(remote_url, auth_token_env=auth_token_env, headers=headers) if remote_url is not None else None
         definition = MCPServerDefinition(
             alias=alias,
             local=local,

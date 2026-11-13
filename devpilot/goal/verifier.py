@@ -72,13 +72,15 @@ class GoalVerifier:
         try:
             head = subprocess.run(
                 ["git", "rev-parse", "HEAD"], cwd=self.workspace,
-                capture_output=True, text=True, check=False, timeout=5,
+                capture_output=True, text=True,
+                encoding="utf-8", errors="replace", check=False, timeout=5,
             )
             if head.returncode != 0:
                 return None, None
             status = subprocess.run(
                 ["git", "status", "--porcelain", "--untracked-files=all"], cwd=self.workspace,
-                capture_output=True, text=True, check=False, timeout=5,
+                capture_output=True, text=True,
+                encoding="utf-8", errors="replace", check=False, timeout=5,
             )
             if status.returncode != 0:
                 return None, None

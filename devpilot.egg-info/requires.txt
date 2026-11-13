@@ -1,2 +1,12 @@
 openai
 python-dotenv
+jsonschema>=4.20
+
+[:platform_system == "Windows"]
+tzdata>=2024.1
+
+[mcp]
+mcp<3,>=2
+
+[test]
+pytest>=8

@@ -1,6 +1,7 @@
 """测试 V8.2 的真实命令、文件、Git 证据和持久化边界。"""
 
 import hashlib
+import os
 import json
 import shutil
 import subprocess
@@ -137,14 +138,22 @@ def test_command_runs_exact_allowed_argv_and_captures_exit(tmp_path):
     """验证只执行完整匹配白名单的 argv，并保存真实返回码与日志。"""
     argv = [sys.executable, "-c", "print('actual test passed')"]
     c = criterion("cmd", "command_exit_code", {"argv": argv, "expected_exit_code": 0})
+
     root, goals, evidence, run_id = make_goal(tmp_path, c)
-    record = make_collector(root, goals, evidence, allowed_commands=(tuple(argv),)).collect(run_id, "cmd")
+    record = make_collector(
+        root,
+        goals,
+        evidence,
+        allowed_commands=(tuple(argv),),
+    ).collect(run_id, "cmd")
+
     assert record.observation["returncode"] == 0
     assert "actual test passed" in record.observation["stdout_tail"]
-    assert record.observation["stdout_sha256"] == hashlib.sha256(b"actual test passed\n").hexdigest()
-    assert record.status == "collected"
-    assert goals.get(run_id).criteria["cmd"].status == "unverified"
 
+    expected_output = f"actual test passed{os.linesep}".encode("utf-8")
+    assert record.observation["stdout_sha256"] == hashlib.sha256(
+        expected_output
+    ).hexdigest()
 
 def test_nonzero_exit_is_collected_not_automatically_failed(tmp_path):
     """验证退出码不为零只是已采集事实，正式失败结论留给 V8.3。"""

@@ -191,6 +191,7 @@ class WorktreeManager:
         )
 
     def _ensure_git_repo(self) -> None:
+        """用 UTF-8 容错解码确认当前 Worktree 根目录是 Git 仓库。"""
         result = subprocess.run(
             [
                 "git",
@@ -200,6 +201,7 @@ class WorktreeManager:
             cwd=self.repo_root,
             capture_output=True,
             text=True,
+                encoding="utf-8", errors="replace",
         )
 
         if result.returncode != 0:
@@ -221,12 +223,14 @@ class WorktreeManager:
         command: list[str],
         cwd: Path,
     ) -> subprocess.CompletedProcess:
+        """执行受控 Git 参数列表并用 UTF-8 解码结果，异常时报告错误。"""
 
         result = subprocess.run(
             command,
             cwd=cwd,
             capture_output=True,
             text=True,
+                encoding="utf-8", errors="replace",
         )
 
         if result.returncode != 0:
