@@ -16,7 +16,7 @@ from devpilot.runtime.general_coder import GeneralCodingAgent, git
 def build_parser() -> argparse.ArgumentParser:
     """统一定义 run、status、approve 和 resume 命令及受信任的启动配置。"""
     parser = argparse.ArgumentParser(prog="devpilot", description="通用 Python Coding Agent（真实模型默认、分阶段人工审批）")
-    parser.add_argument("command", choices=("run", "status", "approve", "resume", "doctor", "publish-pr", "repair", "audit"))
+    parser.add_argument("command", choices=("run", "status", "approve", "resume", "doctor", "publish-pr", "repair", "audit", "recover-pr", "chat", "components"))
     parser.add_argument("--repo", type=Path, required=True, help="真实 Python Git 仓库根目录")
     parser.add_argument("--state", type=Path, default=None, help="必须放在 Git 仓库以外的状态目录")
     parser.add_argument("--task", help="用户自己的自然语言开发任务，仅 run 使用")
@@ -38,7 +38,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-file", action="append", default=[], help="可信宿主限制 Worker 只能修改的 Python 相对路径，可多次传入")
     parser.add_argument("--repair-action", choices=("prepare", "dispatch"), help="V8 反馈修复：准备返工单或创建受审批的返工流程")
     parser.add_argument("--ticket-id", help="V8 返工单编号")
-    parser.add_argument("--dry-run", action="store_true", help="只检查 PR 发布条件，不执行远程写入")
+    parser.add_argument("--dry-run", action="store_true", help="只读取远程与审批证据，不执行远程写入")
+    parser.add_argument("--git-http1.1", dest="git_http1_1", action="store_true", help="恢复 Git 推送时仅该次命令使用 HTTP/1.1")
+    chat = parser.add_mutually_exclusive_group()
+    chat.add_argument("--chat-session", help="恢复指定的持久化对话 ID（默认恢复最近一次）")
+    chat.add_argument("--new-chat", action="store_true", help="创建独立的新对话会话")
+    parser.add_argument("--no-chat-router", action="store_true", help="关闭模糊表达的只读 DeepSeek 意图分类")
     return parser
 
 
@@ -54,6 +59,54 @@ def main(argv: list[str] | None = None, *, model_factory: Any = None) -> int:
     try:
         repo = args.repo.resolve(strict=True)
         state = (args.state or default_state(repo)).resolve()
+        if args.command == "components":
+            # V10.0 只读证据查询：不启动模型、Worker、审批或网络客户端。
+            from devpilot.runtime.component_graph import ComponentGraph
+            if not args.run_id:
+                raise ValueError("components requires --run-id")
+            result = ComponentGraph(repo, state).inspect(args.run_id)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 2 if result["findings"] else 0
+        if args.command == "chat":
+            from devpilot.runtime.chat_agent import (ChatStore, RuntimeChatDriver, run_chat_shell,
+                                                      classify_readonly_intent)
+            store = ChatStore(repo, state)
+            data = store.open(args.chat_session, new=args.new_chat,
+                              mode=args.mode, delivery=args.delivery, files=tuple(args.allow_file))
+            if model_factory is not None:
+                create_model = model_factory
+            elif args.trace_file is not None:
+                from devpilot.runtime.model_trace import TraceWriter, TracedDeepSeekModel
+                trace_path = args.trace_file.expanduser().resolve()
+                if trace_path == repo or trace_path.is_relative_to(repo):
+                    raise ValueError("DeepSeek trace must be stored outside the Git repository")
+                trace = TraceWriter(trace_path)
+                create_model = lambda role: TracedDeepSeekModel(args.model, role=role, trace=trace)
+            else:
+                create_model = lambda _role: DeepSeekModel(model=args.model)
+            driver = RuntimeChatDriver(repo, state, create_model,
+                                       test_mode=args.test or "pytest", timeout=args.timeout,
+                                       mcp_config=args.mcp_config, mcp_read_aliases=tuple(args.mcp_read_alias),
+                                       actor=args.actor, git_http1_1=args.git_http1_1)
+            intent_model = None if args.no_chat_router else lambda text: classify_readonly_intent(text, create_model)
+            return run_chat_shell(store, data, driver, intent_model=intent_model)
+        if args.command == "recover-pr":
+            from devpilot.runtime.pr_recovery import inspect_recovery, recover_pr
+            if not args.run_id:
+                raise ValueError("recover-pr requires --run-id")
+            preview = inspect_recovery(repo, state, args.run_id, issue_url=args.issue_url)
+            print(json.dumps(preview.as_dict(), ensure_ascii=False, indent=2))
+            if args.dry_run:
+                return 0 if preview.action in {"reconcile_only", "push_then_pr", "create_pr"} else 2
+            if preview.action not in {"reconcile_only", "push_then_pr", "create_pr"}:
+                raise PermissionError(f"恢复状态 {preview.action} 需要人工核实，停止操作")
+            print("核对上面的 GitHub 仓库、分支、SHA 与 PR；本命令绝不合并 main 或重跑 Worker。")
+            if input(f"输入 RECOVER {args.run_id} 确认恢复：").strip() != f"RECOVER {args.run_id}":
+                raise PermissionError("恢复操作未经人工明确确认")
+            recovered = recover_pr(repo, state, args.run_id, issue_url=args.issue_url,
+                                   http1_1=args.git_http1_1)
+            print(json.dumps(recovered, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "publish-pr":
             from devpilot.runtime.pr_publisher import build_pr_plan, publish_pr
             if not args.run_id or not args.issue_url:

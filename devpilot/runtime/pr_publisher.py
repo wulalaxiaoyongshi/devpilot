@@ -111,8 +111,10 @@ def _git_changes(repo: Path, base_sha: str, head_sha: str) -> tuple[str, ...]:
 
 
 def build_pr_plan(repo: Path, state: Path, run_id: str, issue_url: str, *,
-                  allow_workflow_step: bool = False) -> PRPlan:
+                  allow_workflow_step: bool = False, allow_recovery: bool = False) -> PRPlan:
     """读取 V7/V8 的最终交付证据并确认 Git HEAD、远程基准及修改范围。"""
+    if allow_workflow_step and allow_recovery:
+        raise ValueError("正常发布与故障恢复模式不能同时启用")
     if not _RUN_ID.fullmatch(run_id):
         raise ValueError("无效 run_id")
     repo = repo.expanduser().resolve(strict=True)
@@ -145,6 +147,21 @@ def build_pr_plan(repo: Path, state: Path, run_id: str, issue_url: str, *,
         if (not isinstance(steps.get("publish_review"), dict) or
                 (steps["publish_review"].get("approval_request") or {}).get("status") != "approved"):
             raise PermissionError("GitHub PR 发布未经人工审核")
+    elif allow_recovery:
+        if workflow.get("status") not in {"failed", "recovery_required", "completed"}:
+            raise PermissionError("只能恢复失败、结果未知或待核实的 PR 交付运行")
+        publish = steps.get("publish_pr")
+        if not isinstance(publish, dict) or publish.get("status") not in {"failed", "recovery_required", "succeeded"}:
+            raise PermissionError("原 PR 步骤没有失败或核实记录")
+        if workflow.get("status") == "completed" and publish.get("status") != "succeeded":
+            raise PermissionError("已完成工作流与 PR 状态不一致")
+        if session.get("delivery") != "github-pr" or session.get("issue_url") != issue_url:
+            raise PermissionError("恢复任务的 Issue 与已授权 GitHub 交付不匹配")
+        if (not isinstance(steps.get("publish_review"), dict) or
+                (steps["publish_review"].get("approval_request") or {}).get("status") != "approved"):
+            raise PermissionError("原 PR 发布审批不存在或未通过")
+        required_steps = (("delivery_review", "report", "publish_review") if session.get("mode") == "repair_delivery"
+                          else ("preapproval", "merge", "verify", "delivery_review", "report", "publish_review"))
     else:
         if workflow.get("status") != "completed":
             raise PermissionError("V7 Workflow 未完成，禁止创建 PR")
@@ -165,7 +182,7 @@ def build_pr_plan(repo: Path, state: Path, run_id: str, issue_url: str, *,
         raise PermissionError("V8 必要验收条件缺少 PASS 证据")
     worker_jobs = report.get("worker_jobs", {})
     source_steps = steps
-    if session.get("mode") == "repair_delivery" and allow_workflow_step:
+    if session.get("mode") == "repair_delivery" and (allow_workflow_step or allow_recovery):
         source_run_id = session.get("source_worker_run_id")
         if not isinstance(source_run_id, str) or not _RUN_ID.fullmatch(source_run_id):
             raise PermissionError("返工交付缺少已执行的 Worker 来源")
@@ -193,7 +210,7 @@ def build_pr_plan(repo: Path, state: Path, run_id: str, issue_url: str, *,
     if not changed or list(changed) != sorted(report.get("changed_files") or []):
         raise PermissionError("改动文件与交付报告不一致")
     expected = {name for item in session.get("plan", {}).get("workers", []) for name in item.get("files", [])}
-    if session.get("mode") == "repair_delivery" and allow_workflow_step:
+    if session.get("mode") == "repair_delivery" and (allow_workflow_step or allow_recovery):
         parent_id = session.get("parent_run_id")
         if not isinstance(parent_id, str) or not _RUN_ID.fullmatch(parent_id):
             raise PermissionError("返工交付缺少原始任务来源")
@@ -203,9 +220,10 @@ def build_pr_plan(repo: Path, state: Path, run_id: str, issue_url: str, *,
         expected |= {name for item in parent.get("plan", {}).get("workers", []) for name in item.get("files", [])}
     if not set(changed).issubset(expected) or any(not name.endswith(".py") for name in changed):
         raise PermissionError("实际修改超出了审批计划中的 Python 文件")
-    remote_main = _remote_sha(repo, "main")
-    if remote_main != base_sha:
-        raise PermissionError("远程 main 已改变或与任务基准不一致，请人工重新集成")
+    if not allow_recovery:
+        remote_main = _remote_sha(repo, "main")
+        if remote_main != base_sha:
+            raise PermissionError("远程 main 已改变或与任务基准不一致，请人工重新集成")
     branch = f"devpilot/issue-{issue_number}-{run_id[:8]}"
     title = f"fix: resolve GitHub Issue #{issue_number}"
     body = (f"Fixes #{issue_number}\n\n"

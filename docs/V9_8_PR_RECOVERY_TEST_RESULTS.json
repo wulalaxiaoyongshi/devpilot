@@ -1,0 +1,34 @@
+{
+  "test_environment": "Linux Python 3.13, offline controlled GitHub API stub; no real DeepSeek/GitHub credentials",
+  "groups": [
+    {
+      "file": "tests/test_v9_8_pr_recovery.py",
+      "passed": 31,
+      "failed": 0
+    },
+    {
+      "file": "tests/test_v9_8_unified_integration.py",
+      "passed": 10,
+      "failed": 0
+    },
+    {
+      "file": "tests/test_v9_5_security.py",
+      "passed": 15,
+      "failed": 0
+    },
+    {
+      "file": "tests/test_v7_4_recovery.py",
+      "passed": 18,
+      "failed": 0
+    }
+  ],
+  "online_pr_4_verified": false,
+  "security_notes": [
+    "No GitHub push to main",
+    "No automatic re-execution of Worker",
+    "API response uncertainty blocks replay",
+    "Branch lease requires ref absent",
+    "V7 reconcile_step preserves recovery events",
+    "Original operation ledger checked"
+  ]
+}
